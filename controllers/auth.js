@@ -1,8 +1,11 @@
-import User from "../models/User.js";
-import { registerSchema } from "../validations/auth.js";
+import User from "../models/User";
+import { hashPassword } from "../utils/hashPassword";
+import { validAuth } from "../utils/validAuth";
+import { loginSchema, registerSchema } from "../validations/auth";
 import bcryptjs from "bcryptjs";
+import jwt from "jsonwebtoken";
 
-export const register = async (req, res) => {
+export const register = async (req, res, next) => {
   try {
     /**
      * 1. Kiem tra du lieu dau vao
@@ -13,20 +16,7 @@ export const register = async (req, res) => {
      */
 
     const { email, password } = req.body;
-
-    // if (email === "" || password === "") {
-    //   return res
-    //     .status(400)
-    //     .json({ message: "Email va password khong duoc de trong!" });
-    // }
-
-    const { error } = registerSchema.validate(req.body, {
-      abortEarly: false,
-    });
-    if (error) {
-      const errors = error.details.map((item) => item.message);
-      return res.status(400).json({ messages: errors });
-    }
+    validAuth(req.body, registerSchema);
 
     // ? B2: Kiem tra email da ton tai chua?
     const checkEmail = await User.findOne({ email });
@@ -35,10 +25,7 @@ export const register = async (req, res) => {
     }
 
     // B3: Ma hoa mat khau
-
-    const salt = await bcryptjs.genSalt(10);
-    const hashPassword = await bcryptjs.hash(password, salt);
-
+    hashPassword(password);
     // B4: Tao user moi
 
     const user = await User.create({ ...req.body, password: hashPassword });
@@ -48,9 +35,39 @@ export const register = async (req, res) => {
       user,
     });
   } catch (error) {
-    return res.status(500).json({
-      name: error.name,
-      message: error.message,
+    next(error);
+  }
+};
+
+export const login = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+    validAuth(req.body, loginSchema);
+
+    const userExist = await User.findOne({ email });
+    if (!userExist) {
+      return res.status(400).json({ message: "Email khong ton tai!" });
+    }
+
+
+    const checkPass = await bcryptjs.compare(password, userExist.password);
+    if (!checkPass) {
+      return res.status(400).json({ message: "Mat khau khong dung!" });
+    }
+
+
+    const token = jwt.sign({ id: userExist._id }, "secretcode", {
+      expiresIn: "1d",
     });
+
+  
+    userExist.password = undefined;
+    return res.status(304).json({
+      message: "Dang nhap thanh cong!",
+      token,
+      userExist,
+    });
+  } catch (error) {
+    next(error);
   }
 };

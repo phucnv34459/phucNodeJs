@@ -82,6 +82,7 @@ export const removeProductById = async (req, res, next) => {
         data,
       });
     }
+    return res.status(400).json({ message: errorMessages.DELETE_FAIL });
   } catch (error) {
     next(error);
   }

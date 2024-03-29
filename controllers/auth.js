@@ -1,9 +1,13 @@
-import User from "../models/User";
-import { hashPassword } from "../utils/hashPassword";
-import { validAuth } from "../utils/validAuth";
-import { loginSchema, registerSchema } from "../validations/auth";
+import { errorMessages, successMessages } from "../constants/message.js";
+import User from "../models/User.js";
+import { comparePassword, hashPassword } from "../utils/hashPassword.js";
+import { validBody } from "../utils/validBody.js";
+import { loginSchema, registerSchema } from "../validations/auth.js";
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+dotenv.config({ path: "./.env.local" });
+const { JWT_SECRET } = process.env;
 
 export const register = async (req, res, next) => {
   try {
@@ -16,22 +20,25 @@ export const register = async (req, res, next) => {
      */
 
     const { email, password } = req.body;
-    validAuth(req.body, registerSchema);
+    const resultValid = validBody(req.body, registerSchema);
+    if (resultValid) {
+      return res.status(400).json({ message: resultValid.errors });
+    }
 
     // ? B2: Kiem tra email da ton tai chua?
     const checkEmail = await User.findOne({ email });
     if (checkEmail) {
-      return res.status(400).json({ message: "Email da ton tai!" });
+      return res.status(400).json({ message: errorMessages.EMAIL_EXISTED });
     }
 
     // B3: Ma hoa mat khau
-    hashPassword(password);
+    const hashPass = await hashPassword(password);
     // B4: Tao user moi
 
-    const user = await User.create({ ...req.body, password: hashPassword });
+    const user = await User.create({ ...req.body, password: hashPass });
     user.password = undefined;
     return res.status(201).json({
-      message: "Dang ky thanh cong!",
+      message:successMessages.REGISTER_SUCCESS,
       user,
     });
   } catch (error) {
@@ -42,27 +49,26 @@ export const register = async (req, res, next) => {
 export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    validAuth(req.body, loginSchema);
+    const resultValid = validBody(req.body, loginSchema);
+    if (resultValid) {
+      return res.status(400).json({ message: resultValid.errors });
+    }
 
     const userExist = await User.findOne({ email });
     if (!userExist) {
       return res.status(400).json({ message: "Email khong ton tai!" });
     }
 
-
-    const checkPass = await bcryptjs.compare(password, userExist.password);
-    if (!checkPass) {
-      return res.status(400).json({ message: "Mat khau khong dung!" });
+    if (!(await comparePassword(password, userExist.password))) {
+      return res.status(400).json({ message: errorMessages.INVALID_PASSWORD });
     }
 
-
-    const token = jwt.sign({ id: userExist._id }, "secretcode", {
+    const token = jwt.sign({ id: userExist._id }, JWT_SECRET , {
       expiresIn: "1d",
     });
 
-  
     userExist.password = undefined;
-    return res.status(304).json({
+    return res.status(201).json({
       message: "Dang nhap thanh cong!",
       token,
       userExist,

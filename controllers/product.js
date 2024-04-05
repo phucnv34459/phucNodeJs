@@ -1,10 +1,10 @@
+import { errorMessages, successMessages } from "../constants/message.js";
+import Category from "../models/Category.js";
 import Product from "../models/Product.js";
-import { validBody } from "../utils/validBody.js";
-import productSchema from "../validations/product.js";
 
 export const getProducts = async (req, res, next) => {
   try {
-    const data = await Product.find({});
+    const data = await Product.find().populate("category");
     if (data && data.length > 0) {
       return res.status(200).json({
         message: "Lay danh sach san pham thanh cong!",
@@ -18,13 +18,16 @@ export const getProducts = async (req, res, next) => {
 };
 export const createProduct = async (req, res, next) => {
   try {
-    const resultValid= validBody(req.body, productSchema);
-   if(resultValid){
-    return res.status(400).json({message: resultValid.errors});
-   }
+  
     const data = await Product.create(req.body);
-    console.log(data);
-    if (!data) {
+    const updateCategory = await Category.findByIdAndUpdate(
+      data.category,
+      {
+        $push: { products: data._id },
+      },
+      { new: true }
+    );
+    if (!data || !updateCategory) {
       return res.status(400).json({ message: "Them san pham that bai!" });
     }
     return res.status(201).json({
@@ -38,7 +41,7 @@ export const createProduct = async (req, res, next) => {
 
 export const getProductById = async (req, res, next) => {
   try {
-    const data = await Product.findById(req.params.id);
+    const data = await Product.findById(req.params.id).populate("category");
     if (!data) {
       return res.status(400).json({ message: "Lay san pham that bai!" });
     }
@@ -53,14 +56,18 @@ export const getProductById = async (req, res, next) => {
 
 export const updateProductById = async (req, res, next) => {
   try {
-    const resultValid= validBody(req.body, productSchema);
-   if(resultValid){
-    return res.status(400).json({message: resultValid.errors});
-   }
+   
     const data = await Product.findByIdAndUpdate(`${req.params.id}`, req.body, {
       new: true,
     });
-    if (!data) {
+    const updateCategory = await Category.findByIdAndUpdate(
+      data.category,
+      {
+        $push: { products: data._id },
+      },
+      { new: true }
+    );
+    if (!data || !updateCategory) {
       return res.status(400).json({ message: "Cap nhat san pham that bai!" });
     }
     return res.status(201).json({

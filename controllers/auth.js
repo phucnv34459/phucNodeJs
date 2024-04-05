@@ -1,13 +1,11 @@
 import { errorMessages, successMessages } from "../constants/message.js";
 import User from "../models/User.js";
 import { comparePassword, hashPassword } from "../utils/hashPassword.js";
-import { validBody } from "../utils/validBody.js";
-import { loginSchema, registerSchema } from "../validations/auth.js";
-import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 dotenv.config({ path: "./.env.local" });
 const { JWT_SECRET } = process.env;
+import { generateToken } from "../utils/jwt";
 
 export const register = async (req, res, next) => {
   try {
@@ -20,10 +18,8 @@ export const register = async (req, res, next) => {
      */
 
     const { email, password } = req.body;
-    const resultValid = validBody(req.body, registerSchema);
-    if (resultValid) {
-      return res.status(400).json({ message: resultValid.errors });
-    }
+  
+  
 
     // ? B2: Kiem tra email da ton tai chua?
     const checkEmail = await User.findOne({ email });
@@ -49,10 +45,7 @@ export const register = async (req, res, next) => {
 export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    const resultValid = validBody(req.body, loginSchema);
-    if (resultValid) {
-      return res.status(400).json({ message: resultValid.errors });
-    }
+   
 
     const userExist = await User.findOne({ email });
     if (!userExist) {
@@ -63,15 +56,13 @@ export const login = async (req, res, next) => {
       return res.status(400).json({ message: errorMessages.INVALID_PASSWORD });
     }
 
-    const token = jwt.sign({ id: userExist._id }, JWT_SECRET , {
-      expiresIn: "1d",
-    });
+    const token = generateToken({ _id: userExist._id }, "10d");
 
     userExist.password = undefined;
     return res.status(201).json({
       message: "Dang nhap thanh cong!",
       token,
-      userExist,
+      user:userExist,
     });
   } catch (error) {
     next(error);

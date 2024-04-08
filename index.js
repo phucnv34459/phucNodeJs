@@ -1,5 +1,4 @@
 import express from "express";
-import mongoose from "mongoose";
 import cors from "cors";
 import router from "./routes/index.js";
 import { errorHandler, errorHandlerNotFound } from "./utils/errorHandler.js";
@@ -13,7 +12,7 @@ app.use(express.json());
 app.use("/api", router);
 connect();
 
-// Error handling 404
+
 app.use(errorHandlerNotFound, errorHandler);
 
 app.listen(PORT || 8000, () => {

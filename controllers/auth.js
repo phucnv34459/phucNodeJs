@@ -1,28 +1,13 @@
 import { errorMessages, successMessages } from "../constants/message.js";
 import User from "../models/User.js";
 import { comparePassword, hashPassword } from "../utils/hashPassword.js";
-import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-dotenv.config({ path: "./.env.local" });
-const { JWT_SECRET } = process.env;
 import { generateToken } from "../utils/jwt";
 
 export const register = async (req, res, next) => {
   try {
-    /**
-     * 1. Kiem tra du lieu dau vao
-     * 2. Kiem tra email da ton tai chua?
-     * 3. Ma hoa mat khau
-     * 4. Tao user moi
-     * 5. Thong bao thanh cong
-     */
-
     const { email, password } = req.body;
   
-  
-
-    // ? B2: Kiem tra email da ton tai chua?
-    const checkEmail = await User.findOne({ email });
     if (checkEmail) {
       return res.status(400).json({ message: errorMessages.EMAIL_EXISTED });
     }
